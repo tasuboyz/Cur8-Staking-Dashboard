@@ -1,0 +1,484 @@
+<html><head><base href=".">
+    <title>Cur8 Staking Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+    :root[data-theme="light"] {
+      --primary: #2a4365;
+      --secondary: #4299e1;
+      --accent: #90cdf4;
+      --background: #f7fafc;
+      --text: #1a202c;
+      --card-bg: white;
+      --border: #ddd;
+    }
+    
+    :root[data-theme="dark"] {
+      --primary: #90cdf4;
+      --secondary: #4299e1;
+      --accent: #2a4365;
+      --background: #1a202c;
+      --text: #f7fafc;
+      --card-bg: #2d3748;
+      --border: #4a5568;
+    }
+    
+    body {
+      font-family: -apple-system, system-ui, BlinkMacSystemFont, "Segoe UI", Roboto, Ubuntu;
+      background: var(--background);
+      color: var(--text);
+      margin: 0;
+      padding: 20px;
+      transition: all 0.3s ease;
+    }
+    
+    .theme-switch {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 1000;
+    }
+    
+    .theme-switch button {
+      padding: 8px 16px;
+      background: var(--card-bg);
+      color: var(--text);
+      border: 1px solid var(--border);
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+    
+    .dashboard {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 20px;
+    }
+    
+    .card {
+      background: var(--card-bg);
+      border-radius: 8px;
+      padding: 20px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    
+    .metric {
+      font-size: 24px;
+      font-weight: bold;
+      color: var(--primary);
+    }
+    
+    .metric .usd-value {
+      font-size: 18px;
+      color: var(--secondary);
+      margin-left: 5px;
+    }
+    
+    .label {
+      color: var(--text);
+      font-size: 14px;
+      opacity: 0.8;
+    }
+    
+    .roi-calculator {
+      grid-column: 1/-1;
+    }
+    
+    input, select {
+      padding: 8px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      margin: 10px 0;
+      background: var(--card-bg);
+      color: var(--text);
+    }
+    
+    button {
+      background: var(--primary);
+      color: var(--text);
+      border: none;
+      padding: 10px 20px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    
+    button:hover {
+      background: var(--secondary);
+    }
+    
+    .top-delegators {
+      grid-column: 1/-1;
+    }
+    
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    
+    th, td {
+      padding: 12px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+    
+    th {
+      background: var(--accent);
+      color: var(--text);
+    }
+    
+    .chart-container {
+      grid-column: 1/-1;
+      height: 400px;
+    }
+    
+    .loading {
+      text-align: center;
+      padding: 20px;
+      font-style: italic;
+      color: var(--text);
+      opacity: 0.8;
+    }
+    
+    .spinner {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 3px solid rgba(var(--text), 0.1);
+      border-radius: 50%;
+      border-top-color: var(--secondary);
+      animation: spin 1s ease-in-out infinite;
+      margin-right: 10px;
+    }
+    
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    </style>
+    </head>
+    <body>
+    
+    <div class="theme-switch">
+      <button onclick="toggleTheme()">Toggle Theme</button>
+    </div>
+    
+    <div class="dashboard">
+      <div class="card">
+        <div class="metric" id="steemDelegators">0</div>
+        <div class="label">STEEM Delegators</div>
+      </div>
+      
+      <div class="card">
+        <div class="metric" id="currentSP">0</div>
+        <div class="label">Current SP / USD Value</div>
+      </div>
+      
+      <div class="card">
+        <div class="metric" id="steemDailyAPR">0%</div>
+        <div class="label">STEEM APR (Annual)</div>
+      </div>
+      
+      <div class="card">
+        <div class="metric" id="hiveDelegators">0</div>
+        <div class="label">HIVE Delegators</div>
+      </div>
+      
+      <div class="card">
+        <div class="metric" id="currentHP">0</div>
+        <div class="label">Current HP / USD Value</div>
+      </div>
+      
+      <div class="card">
+        <div class="metric" id="hiveDailyAPR">0%</div>
+        <div class="label">HIVE APR (Annual)</div>
+      </div>
+    
+      <div class="card roi-calculator">
+        <h2>ROI Calculator</h2>
+        <input type="number" id="investmentInput" placeholder="Enter investment amount">
+        <select id="cryptoSelect">
+          <option value="STEEM">STEEM</option>
+          <option value="HIVE">HIVE</option>
+        </select>
+        <button onclick="calculateROI()">Calculate ROI</button>
+        <div id="roiResult"></div>
+        <canvas id="roiChart"></canvas>
+      </div>
+    
+      <div class="card top-delegators">
+        <h2>Top 10 Delegators</h2>
+        <div class="tabs">
+          <button onclick="showDelegators('STEEM')">STEEM</button>
+          <button onclick="showDelegators('HIVE')">HIVE</button>
+        </div>
+        <div id="delegatorsLoading" class="loading" style="display: none;">
+          <div class="spinner"></div>
+          Loading delegators...
+        </div>
+        <table id="delegatorsTable">
+          <thead>
+            <tr>
+              <th>Rank</th>
+              <th>Account</th>
+              <th>Amount (Crypto / USD)</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+    
+    <script>
+    let cur8Data = null;
+    let roiChart = null;
+    let delegatorsCache = {
+      STEEM: { data: null, timestamp: null },
+      HIVE: { data: null, timestamp: null }
+    };
+    const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+    
+    // Theme management
+    function setTheme(theme) {
+      document.documentElement.setAttribute('data-theme', theme);
+      localStorage.setItem('theme', theme);
+      if (roiChart) {
+        updateChartTheme();
+      }
+    }
+    
+    function toggleTheme() {
+      const currentTheme = localStorage.getItem('theme') || 'light';
+      const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+      setTheme(newTheme);
+    }
+    
+    function updateChartTheme() {
+      const currentTheme = localStorage.getItem('theme') || 'light';
+      const textColor = currentTheme === 'light' ? '#1a202c' : '#f7fafc';
+      
+      roiChart.options.plugins.title.color = textColor;
+      roiChart.options.scales.x.ticks.color = textColor;
+      roiChart.options.scales.y.ticks.color = textColor;
+      roiChart.options.plugins.legend.labels.color = textColor;
+      roiChart.update();
+    }
+    
+    // Initialize theme
+    const savedTheme = localStorage.getItem('theme') || 'light';
+    setTheme(savedTheme);
+    
+    async function fetchData() {
+      try {
+        const [steemData, hiveData, priceData] = await Promise.all([
+          fetch('https://imridd.eu.pythonanywhere.com/api/steem').then(r => r.json()),
+          fetch('https://imridd.eu.pythonanywhere.com/api/hive').then(r => r.json()),
+          fetch('https://imridd.eu.pythonanywhere.com/api/prices').then(r => r.json())
+        ]);
+    
+        updateDashboard(steemData[0], hiveData[0], priceData);
+        cur8Data = {
+          steem: steemData[0],
+          hive: hiveData[0],
+          prices: priceData
+        };
+      } catch (error) {
+        console.error('Error fetching data:', error);
+      }
+    }
+    
+    function updateDashboard(steemData, hiveData, priceData) {
+      const steemInUSD = steemData.current_sp * priceData.STEEM;
+      const hiveInUSD = hiveData.current_hp * priceData.HIVE;
+      
+      document.getElementById('steemDelegators').textContent = steemData.deleg_count;
+      document.getElementById('currentSP').textContent = `${steemData.current_sp.toFixed(2)} ($ ${steemInUSD.toFixed(2)})`;
+      document.getElementById('steemDailyAPR').textContent = steemData.daily_APR.toFixed(2) + '%';
+      
+      document.getElementById('hiveDelegators').textContent = hiveData.deleg_count;
+      document.getElementById('currentHP').textContent = `${hiveData.current_hp.toFixed(2)} ($ ${hiveInUSD.toFixed(2)})`;
+      document.getElementById('hiveDailyAPR').textContent = hiveData.daily_APR.toFixed(2) + '%';
+    }
+    
+    async function showDelegators(type) {
+      const loadingEl = document.getElementById('delegatorsLoading');
+      const tableEl = document.getElementById('delegatorsTable');
+      
+      try {
+        const now = Date.now();
+        const cache = delegatorsCache[type];
+        
+        if (cache.data && cache.timestamp && (now - cache.timestamp < CACHE_DURATION)) {
+          updateDelegatorsTable(cache.data, type);
+          return;
+        }
+    
+        loadingEl.style.display = 'block';
+        tableEl.style.opacity = '0.5';
+    
+        const response = await fetch(`https://imridd.eu.pythonanywhere.com/api/${type.toLowerCase()}/delegators/cur8`);
+        const delegators = await response.json();
+        
+        delegatorsCache[type] = {
+          data: delegators,
+          timestamp: now
+        };
+    
+        updateDelegatorsTable(delegators, type);
+      } catch (error) {
+        console.error('Error fetching delegators:', error);
+      } finally {
+        loadingEl.style.display = 'none';
+        tableEl.style.opacity = '1';
+      }
+    }
+    
+    function updateDelegatorsTable(delegators, type) {
+      const tbody = document.querySelector('#delegatorsTable tbody');
+      tbody.innerHTML = '';
+      
+      const price = cur8Data.prices[type];
+      
+      delegators.slice(0, 10).forEach((delegator, index) => {
+        const row = tbody.insertRow();
+        const amount = delegator[1];
+        const amountInUSD = amount * price;
+        
+        row.insertCell(0).textContent = index + 1;
+        row.insertCell(1).textContent = delegator[0];
+        row.insertCell(2).textContent = `${amount.toFixed(2)} ($ ${amountInUSD.toFixed(2)})`;
+      });
+    }
+    
+    function calculateROI() {
+      if (!cur8Data) return;
+      
+      const investment = parseFloat(document.getElementById('investmentInput').value);
+      const cryptoType = document.getElementById('cryptoSelect').value;
+      if (!investment) return;
+    
+      const data = cryptoType === 'STEEM' ? cur8Data.steem : cur8Data.hive;
+      const price = cur8Data.prices[cryptoType];
+      
+      const cryptoAmount = investment / price; // Convert USD investment to crypto amount
+      const annualAPR = data.daily_APR;
+      const dailyRate = annualAPR / 365 / 100;
+      const yearlyReturn = investment * (annualAPR / 100);
+      const yearlyCryptoReturn = yearlyReturn / price;
+      
+      document.getElementById('roiResult').innerHTML = `
+        <p>Initial ${cryptoType}: ${cryptoAmount.toFixed(2)} ${cryptoType}</p>
+        <p>Annual APR: ${annualAPR.toFixed(2)}%</p>
+        <p>Daily Return: $${(investment * dailyRate).toFixed(2)} (${((investment * dailyRate)/price).toFixed(2)} ${cryptoType})</p>
+        <p>Yearly Return: $${yearlyReturn.toFixed(2)} (${yearlyCryptoReturn.toFixed(2)} ${cryptoType})</p>
+      `;
+      
+      updateChart(investment, annualAPR, cryptoType, price);
+  }
+  
+  function updateChart(investment, annualAPR, cryptoType, price) {
+      const ctx = document.getElementById('roiChart');
+      const currentTheme = localStorage.getItem('theme') || 'light';
+      const textColor = currentTheme === 'light' ? '#1a202c' : '#f7fafc';
+      
+      if (roiChart) {
+          roiChart.destroy();
+      }
+      
+      const months = Array.from({length: 12}, (_, i) => i + 1);
+      const dailyRate = annualAPR / 365 / 100;
+      
+      const monthlyReturnsUSD = months.map(month => {
+          return investment * Math.pow(1 + dailyRate, 30.44 * month) - investment;
+      });
+      
+      const monthlyReturnsCrypto = monthlyReturnsUSD.map(usdReturn => usdReturn / price);
+      
+      roiChart = new Chart(ctx, {
+          type: 'line',
+          data: {
+              labels: months.map(m => `Month ${m}`),
+              datasets: [
+                  {
+                      label: `USD Returns ($)`,
+                      data: monthlyReturnsUSD,
+                      borderColor: '#4299e1',
+                      backgroundColor: 'rgba(66, 153, 225, 0.1)',
+                      fill: true,
+                      yAxisID: 'y'
+                  },
+                  {
+                      label: `${cryptoType} Returns`,
+                      data: monthlyReturnsCrypto,
+                      borderColor: '#48bb78',
+                      backgroundColor: 'rgba(72, 187, 120, 0.1)',
+                      fill: true,
+                      yAxisID: 'y1'
+                  }
+              ]
+          },
+          options: {
+              responsive: true,
+              scales: {
+                  y: {
+                      type: 'linear',
+                      display: true,
+                      position: 'left',
+                      beginAtZero: true,
+                      ticks: {
+                          color: textColor,
+                          callback: value => '$' + value.toFixed(2)
+                      },
+                      title: {
+                          display: true,
+                          text: 'USD Value',
+                          color: textColor
+                      }
+                  },
+                  y1: {
+                      type: 'linear',
+                      display: true,
+                      position: 'right',
+                      beginAtZero: true,
+                      ticks: {
+                          color: textColor,
+                          callback: value => value.toFixed(2)
+                      },
+                      title: {
+                          display: true,
+                          text: cryptoType,
+                          color: textColor
+                      },
+                      grid: {
+                          drawOnChartArea: false
+                      }
+                  },
+                  x: {
+                      ticks: {
+                          color: textColor
+                      }
+                  }
+              },
+              plugins: {
+                  title: {
+                      display: true,
+                      text: 'Projected Returns Over Time',
+                      color: textColor
+                  },
+                  legend: {
+                      labels: {
+                          color: textColor
+                      }
+                  }
+              }
+          }
+      });
+  }
+    
+    // Initial load
+    fetchData();
+    showDelegators('STEEM');
+    
+    // Refresh data every 5 minutes
+    setInterval(fetchData, 300000);
+    </script>
+    
+    </body></html>
