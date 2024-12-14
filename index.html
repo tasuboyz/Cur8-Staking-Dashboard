@@ -1,242 +1,109 @@
-<html><head><base href=".">
-    <title>Cur8 Staking Dashboard</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <style>
+<html><head><base href="." />
+  <title>ROI Calculator & Statistics Dashboard</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
     :root[data-theme="light"] {
-      --primary: #2a4365;
-      --secondary: #4299e1;
-      --accent: #90cdf4;
-      --background: #f7fafc;
-      --text: #1a202c;
-      --card-bg: white;
-      --border: #ddd;
+      --bg-primary: #ffffff;
+      --text-primary: #1a202c;
+      --card-bg: #f7fafc;
+      --border-color: #e2e8f0;
     }
     
     :root[data-theme="dark"] {
-      --primary: #90cdf4;
-      --secondary: #4299e1;
-      --accent: #2a4365;
-      --background: #1a202c;
-      --text: #f7fafc;
+      --bg-primary: #1a202c;
+      --text-primary: #f7fafc;
       --card-bg: #2d3748;
-      --border: #4a5568;
+      --border-color: #4a5568;
     }
     
     body {
-      font-family: -apple-system, system-ui, BlinkMacSystemFont, "Segoe UI", Roboto, Ubuntu;
-      background: var(--background);
-      color: var(--text);
-      margin: 0;
-      padding: 20px;
-      transition: all 0.3s ease;
-    }
-    
-    .theme-switch {
-      position: fixed;
-      top: 20px;
-      right: 20px;
-      z-index: 1000;
-    }
-    
-    .theme-switch button {
-      padding: 8px 16px;
-      background: var(--card-bg);
-      color: var(--text);
-      border: 1px solid var(--border);
-      cursor: pointer;
-      transition: all 0.3s ease;
-    }
-    
-    .dashboard {
-      max-width: 1200px;
-      margin: 0 auto;
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-      gap: 20px;
+      background-color: var(--bg-primary);
+      color: var(--text-primary);
+      transition: background-color 0.3s, color 0.3s;
     }
     
     .card {
+      background-color: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 0.5rem;
+    }
+    
+    .theme-toggle {
+      position: fixed;
+      top: 1rem;
+      right: 1rem;
+      z-index: 100;
+    }
+    
+    .mobile-nav {
+      display: none;
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
       background: var(--card-bg);
-      border-radius: 8px;
-      padding: 20px;
-      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      border-top: 1px solid var(--border-color);
+      padding: 0.5rem;
+      z-index: 100;
     }
-    
-    .metric {
-      font-size: 24px;
-      font-weight: bold;
-      color: var(--primary);
+
+    .section {
+      display: none;
+      padding: 1rem;
     }
-    
-    .metric .usd-value {
-      font-size: 18px;
-      color: var(--secondary);
-      margin-left: 5px;
+
+    .section.active {
+      display: block;
     }
-    
-    .label {
-      color: var(--text);
-      font-size: 14px;
-      opacity: 0.8;
+
+    @media (max-width: 768px) {
+      .mobile-nav {
+        display: flex;
+        justify-content: space-around;
+      }
+
+      .theme-toggle {
+        top: 0.5rem;
+        right: 0.5rem;
+      }
+
+      body {
+        padding-bottom: 4rem;
+      }
+
+      .card {
+        margin-bottom: 1rem;
+      }
+
+      .grid {
+        grid-template-columns: 1fr !important;
+      }
+
+      .card canvas {
+        min-height: 300px;
+      }
     }
-    
-    .roi-calculator {
-      grid-column: 1/-1;
+
+    .card canvas {
+      min-height: 400px;
+      width: 100% !important;
     }
-    
-    input, select {
-      padding: 8px;
-      border: 1px solid var(--border);
-      border-radius: 4px;
-      margin: 10px 0;
-      background: var(--card-bg);
-      color: var(--text);
+
+    input[type="number"], select {
+      border: 1px solid var(--border-color);
+      border-radius: 0.25rem;
+      padding: 0.5rem;
+      width: 100%;
     }
-    
+
     button {
-      background: var(--primary);
-      color: var(--text);
-      border: none;
-      padding: 10px 20px;
-      border-radius: 4px;
       cursor: pointer;
     }
-    
-    button:hover {
-      background: var(--secondary);
-    }
-    
-    .top-delegators {
-      grid-column: 1/-1;
-    }
-    
-    table {
-      width: 100%;
-      border-collapse: collapse;
-    }
-    
-    th, td {
-      padding: 12px;
-      text-align: left;
-      border-bottom: 1px solid var(--border);
-    }
-    
-    th {
-      background: var(--accent);
-      color: var(--text);
-    }
-    
-    .chart-container {
-      grid-column: 1/-1;
-      height: 400px;
-    }
-    
-    .loading {
-      text-align: center;
-      padding: 20px;
-      font-style: italic;
-      color: var(--text);
-      opacity: 0.8;
-    }
-    
-    .spinner {
-      display: inline-block;
-      width: 20px;
-      height: 20px;
-      border: 3px solid rgba(var(--text), 0.1);
-      border-radius: 50%;
-      border-top-color: var(--secondary);
-      animation: spin 1s ease-in-out infinite;
-      margin-right: 10px;
-    }
-    
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-    </style>
-    </head>
-    <body>
-    
-    <div class="theme-switch">
-      <button onclick="toggleTheme()">Toggle Theme</button>
-    </div>
-    
-    <div class="dashboard">
-      <div class="card">
-        <div class="metric" id="steemDelegators">0</div>
-        <div class="label">STEEM Delegators</div>
-      </div>
-      
-      <div class="card">
-        <div class="metric" id="currentSP">0</div>
-        <div class="label">Current SP / USD Value</div>
-      </div>
-      
-      <div class="card">
-        <div class="metric" id="steemDailyAPR">0%</div>
-        <div class="label">STEEM APR (Annual)</div>
-      </div>
-      
-      <div class="card">
-        <div class="metric" id="hiveDelegators">0</div>
-        <div class="label">HIVE Delegators</div>
-      </div>
-      
-      <div class="card">
-        <div class="metric" id="currentHP">0</div>
-        <div class="label">Current HP / USD Value</div>
-      </div>
-      
-      <div class="card">
-        <div class="metric" id="hiveDailyAPR">0%</div>
-        <div class="label">HIVE APR (Annual)</div>
-      </div>
-    
-      <div class="card roi-calculator">
-        <h2>ROI Calculator</h2>
-        <input type="number" id="investmentInput" placeholder="Enter investment amount">
-        <select id="cryptoSelect">
-          <option value="STEEM">STEEM</option>
-          <option value="HIVE">HIVE</option>
-        </select>
-        <button onclick="calculateROI()">Calculate ROI</button>
-        <div id="roiResult"></div>
-        <canvas id="roiChart"></canvas>
-      </div>
-    
-      <div class="card top-delegators">
-        <h2>Top 10 Delegators</h2>
-        <div class="tabs">
-          <button onclick="showDelegators('STEEM')">STEEM</button>
-          <button onclick="showDelegators('HIVE')">HIVE</button>
-        </div>
-        <div id="delegatorsLoading" class="loading" style="display: none;">
-          <div class="spinner"></div>
-          Loading delegators...
-        </div>
-        <table id="delegatorsTable">
-          <thead>
-            <tr>
-              <th>Rank</th>
-              <th>Account</th>
-              <th>Amount (Crypto / USD)</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
-      </div>
-    </div>
-    
-    <script>
-    let cur8Data = null;
-    let roiChart = null;
-    let delegatorsCache = {
-      STEEM: { data: null, timestamp: null },
-      HIVE: { data: null, timestamp: null }
-    };
-    const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
-    
-    // Theme management
+  </style>
+  <script>
+    // Theme management functions need to be defined before DOM loads
     function setTheme(theme) {
       document.documentElement.setAttribute('data-theme', theme);
       localStorage.setItem('theme', theme);
@@ -250,6 +117,297 @@
       const newTheme = currentTheme === 'light' ? 'dark' : 'light';
       setTheme(newTheme);
     }
+
+    function updateChart(investment, annualAPR, cryptoType, price) {
+      const ctx = document.getElementById('roiChart');
+      const currentTheme = localStorage.getItem('theme') || 'light';
+      const textColor = currentTheme === 'light' ? '#1a202c' : '#f7fafc';
+      
+      if (roiChart) {
+        roiChart.destroy();
+      }
+      
+      const months = Array.from({length: 12}, (_, i) => i + 1);
+      const dailyRate = annualAPR / 365 / 100;
+      
+      const monthlyReturnsUSD = months.map(month => {
+        return investment * Math.pow(1 + dailyRate, 30.44 * month) - investment;
+      });
+      
+      const monthlyReturnsCrypto = monthlyReturnsUSD.map(usdReturn => usdReturn / price);
+      
+      roiChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: months.map(m => `Month ${m}`),
+          datasets: [
+            {
+              label: `USD Returns ($)`,
+              data: monthlyReturnsUSD,
+              borderColor: '#4299e1',
+              backgroundColor: 'rgba(66, 153, 225, 0.2)',
+              borderWidth: 3,
+              pointRadius: 4,
+              pointHoverRadius: 6,
+              pointBackgroundColor: '#4299e1',
+              tension: 0.4,
+              fill: true,
+              yAxisID: 'y'
+            },
+            {
+              label: `${cryptoType} Returns`,
+              data: monthlyReturnsCrypto,
+              borderColor: '#48bb78',
+              backgroundColor: 'rgba(72, 187, 120, 0.2)',
+              borderWidth: 3,
+              pointRadius: 4,
+              pointHoverRadius: 6,
+              pointBackgroundColor: '#48bb78',
+              tension: 0.4,
+              fill: true,
+              yAxisID: 'y1'
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: {
+            mode: 'index',
+            intersect: false,
+          },
+          scales: {
+            y: {
+              type: 'linear',
+              display: true,
+              position: 'left',
+              beginAtZero: true,
+              grid: {
+                color: currentTheme === 'light' ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)'
+              },
+              ticks: {
+                color: textColor,
+                callback: value => '$' + value.toFixed(2),
+                font: {
+                  size: 12
+                }
+              },
+              title: {
+                display: true,
+                text: 'USD Value',
+                color: textColor,
+                font: {
+                  size: 14,
+                  weight: 'bold'
+                }
+              }
+            },
+            y1: {
+              type: 'linear',
+              display: true,
+              position: 'right',
+              beginAtZero: true,
+              grid: {
+                drawOnChartArea: false,
+                color: currentTheme === 'light' ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)'
+              },
+              ticks: {
+                color: textColor,
+                callback: value => value.toFixed(2),
+                font: {
+                  size: 12
+                }
+              },
+              title: {
+                display: true,
+                text: cryptoType,
+                color: textColor,
+                font: {
+                  size: 14,
+                  weight: 'bold'
+                }
+              }
+            },
+            x: {
+              grid: {
+                color: currentTheme === 'light' ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)'
+              },
+              ticks: {
+                color: textColor,
+                font: {
+                  size: 12
+                }
+              }
+            }
+          },
+          plugins: {
+            title: {
+              display: true,
+              text: 'Projected Returns Over Time',
+              color: textColor,
+              font: {
+                size: 16,
+                weight: 'bold'
+              },
+              padding: 20
+            },
+            legend: {
+              labels: {
+                color: textColor,
+                font: {
+                  size: 12
+                },
+                usePointStyle: true,
+                padding: 20
+              }
+            },
+            tooltip: {
+              backgroundColor: currentTheme === 'light' ? 'rgba(255,255,255,0.9)' : 'rgba(0,0,0,0.9)',
+              titleColor: currentTheme === 'light' ? '#1a202c' : '#f7fafc',
+              bodyColor: currentTheme === 'light' ? '#1a202c' : '#f7fafc',
+              borderColor: currentTheme === 'light' ? '#e2e8f0' : '#4a5568',
+              borderWidth: 1,
+              padding: 12,
+              displayColors: true,
+              callbacks: {
+                label: function(context) {
+                  let label = context.dataset.label || '';
+                  if (label) {
+                    label += ': ';
+                  }
+                  if (context.datasetIndex === 0) {
+                    label += '$' + context.parsed.y.toFixed(2);
+                  } else {
+                    label += context.parsed.y.toFixed(2);
+                  }
+                  return label;
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+  </script>
+</head>
+<body class="p-4">
+  <button onclick="toggleTheme()" class="theme-toggle bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg">
+    Toggle Theme
+  </button>
+
+  <div class="max-w-6xl mx-auto">
+    <h1 class="text-3xl font-bold mb-8 text-center">Cur8 Delegation Dashboard</h1>
+    
+    <!-- Stats Section -->
+    <div id="stats-section" class="section active">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+        <!-- STEEM Stats -->
+        <div class="card rounded-lg p-6">
+          <h2 class="text-xl font-semibold mb-4">STEEM Statistics</h2>
+          <div class="space-y-2">
+            <p>Delegators: <span id="steemDelegators">-</span></p>
+            <p>Current SP: <span id="currentSP">-</span></p>
+            <p>Daily APR: <span id="steemDailyAPR">-</span></p>
+          </div>
+        </div>
+
+        <!-- HIVE Stats -->
+        <div class="card rounded-lg p-6">
+          <h2 class="text-xl font-semibold mb-4">HIVE Statistics</h2>
+          <div class="space-y-2">
+            <p>Delegators: <span id="hiveDelegators">-</span></p>
+            <p>Current HP: <span id="currentHP">-</span></p>
+            <p>Daily APR: <span id="hiveDailyAPR">-</span></p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Calculator Section -->
+    <div id="calculator-section" class="section">
+      <!-- ROI Calculator -->
+      <div class="card rounded-lg p-6 mb-8">
+        <h2 class="text-xl font-semibold mb-4">ROI Calculator</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <div class="mb-4">
+              <label class="block mb-2">Investment Amount (USD)</label>
+              <input type="number" id="investmentInput" class="w-full p-2 border rounded text-black" 
+                     onchange="calculateROI()" onkeyup="calculateROI()">
+            </div>
+            <div class="mb-4">
+              <label class="block mb-2">Crypto Type</label>
+              <select id="cryptoSelect" class="w-full p-2 border rounded text-black" 
+                      onchange="calculateROI()">
+                <option value="STEEM">STEEM</option>
+                <option value="HIVE">HIVE</option>
+              </select>
+            </div>
+            <div id="roiResult" class="space-y-2"></div>
+          </div>
+          <div>
+            <canvas id="roiChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Delegators Section -->
+    <div id="delegators-section" class="section">
+      <!-- Delegators Table -->
+      <div class="card rounded-lg p-6">
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-xl font-semibold">Top Delegators</h2>
+          <div class="space-x-2">
+            <button onclick="showDelegators('STEEM')" 
+                    class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded">
+              STEEM
+            </button>
+            <button onclick="showDelegators('HIVE')" 
+                    class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded">
+              HIVE
+            </button>
+          </div>
+        </div>
+        
+        <div id="delegatorsLoading" class="hidden text-center py-4">
+          Loading...
+        </div>
+        
+        <table id="delegatorsTable" class="w-full">
+          <thead>
+            <tr class="border-b">
+              <th class="text-left py-2">#</th>
+              <th class="text-left py-2">Account</th>
+              <th class="text-left py-2">Amount</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="mobile-nav">
+    <button onclick="showSection('stats')" class="px-4 py-2 rounded-lg bg-blue-500 text-white">
+      Stats
+    </button>
+    <button onclick="showSection('calculator')" class="px-4 py-2 rounded-lg bg-blue-500 text-white">
+      Calculator
+    </button>
+    <button onclick="showSection('delegators')" class="px-4 py-2 rounded-lg bg-blue-500 text-white">
+      Delegators
+    </button>
+  </div>
+
+  <script>
+    let cur8Data = null;
+    let roiChart = null;
+    let delegatorsCache = {
+      STEEM: { data: null, timestamp: null },
+      HIVE: { data: null, timestamp: null }
+    };
+    const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
     
     function updateChartTheme() {
       const currentTheme = localStorage.getItem('theme') || 'light';
@@ -358,7 +516,7 @@
       const data = cryptoType === 'STEEM' ? cur8Data.steem : cur8Data.hive;
       const price = cur8Data.prices[cryptoType];
       
-      const cryptoAmount = investment / price; // Convert USD investment to crypto amount
+      const cryptoAmount = investment / price;
       const annualAPR = data.daily_APR;
       const dailyRate = annualAPR / 365 / 100;
       const yearlyReturn = investment * (annualAPR / 100);
@@ -372,106 +530,7 @@
       `;
       
       updateChart(investment, annualAPR, cryptoType, price);
-  }
-  
-  function updateChart(investment, annualAPR, cryptoType, price) {
-      const ctx = document.getElementById('roiChart');
-      const currentTheme = localStorage.getItem('theme') || 'light';
-      const textColor = currentTheme === 'light' ? '#1a202c' : '#f7fafc';
-      
-      if (roiChart) {
-          roiChart.destroy();
-      }
-      
-      const months = Array.from({length: 12}, (_, i) => i + 1);
-      const dailyRate = annualAPR / 365 / 100;
-      
-      const monthlyReturnsUSD = months.map(month => {
-          return investment * Math.pow(1 + dailyRate, 30.44 * month) - investment;
-      });
-      
-      const monthlyReturnsCrypto = monthlyReturnsUSD.map(usdReturn => usdReturn / price);
-      
-      roiChart = new Chart(ctx, {
-          type: 'line',
-          data: {
-              labels: months.map(m => `Month ${m}`),
-              datasets: [
-                  {
-                      label: `USD Returns ($)`,
-                      data: monthlyReturnsUSD,
-                      borderColor: '#4299e1',
-                      backgroundColor: 'rgba(66, 153, 225, 0.1)',
-                      fill: true,
-                      yAxisID: 'y'
-                  },
-                  {
-                      label: `${cryptoType} Returns`,
-                      data: monthlyReturnsCrypto,
-                      borderColor: '#48bb78',
-                      backgroundColor: 'rgba(72, 187, 120, 0.1)',
-                      fill: true,
-                      yAxisID: 'y1'
-                  }
-              ]
-          },
-          options: {
-              responsive: true,
-              scales: {
-                  y: {
-                      type: 'linear',
-                      display: true,
-                      position: 'left',
-                      beginAtZero: true,
-                      ticks: {
-                          color: textColor,
-                          callback: value => '$' + value.toFixed(2)
-                      },
-                      title: {
-                          display: true,
-                          text: 'USD Value',
-                          color: textColor
-                      }
-                  },
-                  y1: {
-                      type: 'linear',
-                      display: true,
-                      position: 'right',
-                      beginAtZero: true,
-                      ticks: {
-                          color: textColor,
-                          callback: value => value.toFixed(2)
-                      },
-                      title: {
-                          display: true,
-                          text: cryptoType,
-                          color: textColor
-                      },
-                      grid: {
-                          drawOnChartArea: false
-                      }
-                  },
-                  x: {
-                      ticks: {
-                          color: textColor
-                      }
-                  }
-              },
-              plugins: {
-                  title: {
-                      display: true,
-                      text: 'Projected Returns Over Time',
-                      color: textColor
-                  },
-                  legend: {
-                      labels: {
-                          color: textColor
-                      }
-                  }
-              }
-          }
-      });
-  }
+    }
     
     // Initial load
     fetchData();
@@ -479,6 +538,18 @@
     
     // Refresh data every 5 minutes
     setInterval(fetchData, 300000);
-    </script>
     
-    </body></html>
+    function showSection(sectionName) {
+      // Hide all sections
+      document.querySelectorAll('.section').forEach(section => {
+        section.classList.remove('active');
+      });
+      
+      // Show selected section
+      document.getElementById(`${sectionName}-section`).classList.add('active');
+    }
+
+    // Initialize first section
+    showSection('stats');
+  </script>
+</body></html>
